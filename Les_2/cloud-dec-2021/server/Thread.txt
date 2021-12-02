@@ -1,0 +1,307 @@
+1 Запуск потока через лямбду
+
+public class MainApp {
+   public static void main(String[] args) {
+       Thread thread = new Thread(() -> {
+           for (int i = 0; i < 5; i++) {
+               System.out.println(i);
+           }
+       });
+       thread.start();
+   }
+}
+-------------------------------------------------------------------------------
+2 Запуск потока через анонимный внутренний класс
+
+public class MainApp {
+   public static void main(String[] args) {
+       Thread thread = new Thread(new Runnable() {
+           @Override
+           public void run() {
+               for (int i = 0; i < 5; i++) {
+                   System.out.println(i);
+               }
+           }
+       });
+       thread.start();
+   }
+}
+
+-----------------------------------------------------------------------------
+3 Запуск потока через реализацию интерфейса Runnable
+
+public class MyRunnableTask implements Runnable {
+   @Override
+   public void run() {
+       for (int i = 0; i < 5; i++) {
+           System.out.println("Thread out: " + i);
+       }
+   }
+}
+
+public class MainApp {
+   public static void main(String[] args) {
+       Thread thread1 = new Thread(new MyRunnableTask());
+       Thread thread2 = new Thread(new MyRunnableTask());
+       thread1.start();
+       thread2.start();
+   }
+}
+--------------------------------------------------------------------------
+4 Запуск потока через наследование от класса Тhread ( так лучше не делать, потому что нету смысла наследовать
+класс Тhread, если мы не собираемся ничего в нем использовать кроме запуска потока).
+
+public class MyThread extends Thread {
+   @Override
+   public void run() {
+       for (int i = 0; i < 5; i++) {
+           System.out.println("Thread out: " + i);
+       }
+   }
+}
+
+public class MainApp {
+   public static void main(String[] args) {
+       Thread thread1 = new MyThread();
+       Thread thread2 = new MyThread();
+       thread1.start();
+       thread2.start();
+   }
+}
+-----------------------------------------------------------------------------
+Получение ссылки на текущий поток
+
+public class MainApp {
+   public static void main(String[] args) {
+       System.out.println(Thread.currentThread().getName());
+   }
+}
+
+Вывод в консоли:
+main
+----------------------------------------------------------------------------
+Приостановка потоков
+
+Thread.sleep(1000);
+----------------------------------------------------------------------------
+Перед запуском потока, его можно сделать служебным (daemon).
+Такие служебные потоки работают до тех пор, пока работает хотя бы один обычный поток. Как только все не daemon потоки 
+завершат свою работу, завершатся и daemon потоки. Если ваш поток нельзя останавливать в любой момент времени, то не 
+стоит его делать daemon потоком.
+
+public class MainApp {
+   public static void main(String[] args) {
+       Thread thread = new Thread(() -> System.out.println(1));
+       thread.setDaemon(true);
+       thread.start();
+   }
+}
+-----------------------------------------------------------------------------
+Ожидание завершения работы потока
+
+Thread thread = new Thread(() -> {
+           for (int i = 1; i <= 5; i++) {
+               try {
+                   Thread.sleep(500);
+               } catch (InterruptedException e) {
+                   e.printStackTrace();
+               }
+               System.out.println(i);
+           }
+       });
+       thread.start();
+       thread.join();
+       System.out.println("END");
+--------------------------------------------------------------------------------
+Синхронизация (ключевое слово synchronized в методе, над которым проводят действия несколько потоков)
+
+public synchronized void increment() {
+           value++;
+       }
+В роли монитора выступает объект, у которого потоки вызывают синхронизированные методы. На обычные несинхронизированные 
+методы никакие блокировки не распространяются.
+Отсюда же следует, что два потока могут параллельно вызывать синхронизированные методы у двух разных объектов одного и 
+того же класса.
+--------------------------------------------------------------------------------
+Эти методы реализованы в классе Object, поэтому доступны всем классам. Все три метода могут быть вызваны только из синхронизированного контекста.
+• Метод wait() вынуждает вызывающий поток исполнения уступить монитор и перейти в состояние ожидания до тех пор, пока 
+какой-нибудь другой поток не войдет в тот же монитор и не вызовет метод notify().
+• Метод notify() возобновляет исполнение потока, из которого был вызван метод wait() для того же самого монитора.
+• Метод notifyAll() возобновляет исполнение всех потоков, из которых был вызван метод wait() для того же самого монитора.
+Одному из этих потоков предоставляется доступ.
+----------------------------------------------------------------------------------
+Способы запуска задач через пул потоков
+
+public class ServiceApp {
+   public static void main(String[] args) throws Exception {
+       ExecutorService executorService = Executors.newFixedThreadPool(2);
+       Future<String> future = executorService.submit(() -> {
+           System.out.println("Асинхронный вызов");
+           return "Результат из потока";
+       });
+       System.out.println("future.get() = " + future.get());
+       executorService.shutdown();
+   }
+}
+-------------------------------------------------------------------------------------
+Классы синхронизации
+
+Semaphore ограничивает количество потоков при работе с ресурсами. Для этого служит счетчик. Если его значение больше нуля, то потоку 
+разрешается доступ, а значение уменьшается. Если счетчик равен нулю, то текущий поток блокируется до освобождения ресурса. 
+Для получения доступа используется метод acquire(), для освобождения – release(). Пример работы:
+
+public class SemaphoreDemo {
+    public static void main(String[] args) {
+        Semaphore smp = new Semaphore(2);
+        for (int i = 0; i < 5; i++) {
+            final int w = i;
+            new Thread(() -> {
+                try {
+                    System.out.println("Поток " + w + " перед семафором");
+                    smp.acquire();
+                    System.out.println("Поток " + w + " получил доступ к ресурсу");
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } finally {
+                    System.out.println("Поток " + w + " освободил ресурс");
+                    smp.release();
+                }
+            }).start();
+        }
+    }
+}
+------------------------------------
+CountDownLatch позволяет потоку ожидать завершения операций, выполняющихся в других потоках. Режим ожидания запускается методом await().
+ При создании объекта определяется количество требуемых операций, после чего уменьшается при вызове метода countDown(). 
+Как только счетчик доходит до нуля, с ожидающего потока снимается блокировка.
+
+public class SimpleCDL {
+    public static void main(String[] args) throws InterruptedException {
+        // задаем количество потоков
+        final int THREADS_COUNT = 6;                                                                 
+        // задаем значение счетчика
+        final CountDownLatch cdl = new CountDownLatch(THREADS_COUNT);
+        System.out.println("Начинаем");
+        for (int i = 0; i < THREADS_COUNT; i++) {
+            final int w = i;
+            new Thread(() -> {
+                try {
+                    // считаем, что выполнение задачи занимает ~1 сек
+                    Thread.sleep(500 + (int)(500 * Math.random()));
+                    cdl.countDown();  
+                    // как только задача выполнена, уменьшаем счетчик                                                                 
+                    System.out.println("Поток #" + w + " - готов");
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+        }
+        // пока счетчик не приравняется нулю, будем стоять на этой строке
+        cdl.await();
+        // как только все потоки выполнили свои задачи - пишем сообщение
+        System.out.println("Работа завершена");                  
+    }
+}
+--------------------------------
+CyclicBarrier выполняет синхронизацию заданного количества потоков в одной точке. Как только заданное количество потоков заблокировалось 
+(вызовами метода await()), с них одновременно снимается блокировка.
+Потоки закончили подготовку в разное время, но стартовали вместе, так как блокировка снимается одновременно.
+
+
+public class CyclicBarrierApp {
+   public static void main(String[] args) {
+       final int THREADS_COUNT = 5;
+       CyclicBarrier cyclicBarrier = new CyclicBarrier(THREADS_COUNT);
+       for (int i = 0; i < THREADS_COUNT; i++) {
+           int index = i;
+           new Thread(() -> {
+               try {
+                   System.out.println("Подготавливается " + index);
+                   Thread.sleep(2000 + 500 * (int) (Math.random() * 10));
+                   System.out.println("Готов " + index);
+                   cyclicBarrier.await(); // 4 3 2 1 0
+                   System.out.println("Поехал " + index);
+                   Thread.sleep(2000 + 500 * (int) (Math.random() * 10));
+                   System.out.println("Доехал " + index);
+                   cyclicBarrier.await(); // 4 3 2 1 0
+                   System.out.println("Гонка закончилась");
+               } catch (InterruptedException | BrokenBarrierException e) {
+                   e.printStackTrace();
+               }
+           }).start();
+       }
+   }
+}
+-----------------------------------
+Интерфейс Lock из пакета java.util.concurrent – это продвинутый механизм синхронизации потоков. По гибкости он выигрывает в сравнении с 
+блоками синхронизации. Для работы с этим интерфейсом необходимо создать объект одной из его реализаций:
+
+public class SimplestLockApp {
+   public static void main(String[] args) {
+       final Lock lock = new ReentrantLock();
+       new Thread(() -> {           
+           try {
+               lock.lock();
+               // Критическая секция
+           } finally {               
+               lock.unlock();
+           }
+       }).start();
+   }
+}
+Создаем объект типа Lock и вызываем у него метод lock() – он захватывается. Если другой поток попытается вызвать этот метод у того же 
+объекта – он будет блокирован до тех пор, пока поток, удерживающий объект lock, не освободит его через метод unlock(). 
+Тогда этот объект смогут захватить другие потоки.
+Основные отличия между Lock и синхронизированными блоками:
+-Синхронизированные блоки не гарантируют, что сохранится порядок обращения потоков к критической секции;
+-Нельзя выйти из синхронизированного блока по времени ожидания (timeout);
+-Синхронизированные блоки должны полностью содержаться в одном методе. Lock может быть захвачен в одном методе, а освобожден в другом.
+----------------------------
+Интерфейс java.util.concurrent.locks.ReadWriteLock – это продвинутый механизм для блокировки потоков. Он позволяет множеству потоков 
+одновременно читать данные, или только одному потоку – их записывать. Ресурс открыт для чтения множеству потоков без риска ошибок. 
+Проблемный момент – если несколько потоков одновременно читают и записывают данные. 
+
+public class SimplestRWLockApp {
+   public static void main(String[] args) {
+       final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+       for (int i = 0; i < 3; i++) {
+           int index = i;
+           new Thread(() -> {
+               try {
+                   readWriteLock.readLock().lock();
+                   System.out.println("Начало чтения - " + index);
+                   shortSleep(1000);
+                   System.out.println("Завершение чтения - " + index);
+               } finally {
+                   readWriteLock.readLock().unlock();
+               }
+           }).start();
+       }
+       for (int i = 0; i < 2; i++) {
+           int index = i;
+           new Thread(() -> {
+               try {
+                   readWriteLock.writeLock().lock();
+                   System.out.println("Начало записи - " + index);
+                   shortSleep(1000);
+                   System.out.println("Завершение записи - " + index);
+               } finally {
+                   readWriteLock.writeLock().unlock();
+               }
+           }).start();
+       }
+   }
+
+   public static void shortSleep(long ms) {
+       try {
+           Thread.sleep(ms);
+       } catch (InterruptedException e) {
+           e.printStackTrace();
+       }
+   }
+}
+-------------------------------------------------------------------------------------------------------
+
+
+
