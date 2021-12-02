@@ -1,0 +1,4 @@
+enum Season { WINTER, SPRING, SUMMER, AUTUMN }
+Season season = Season.WINTER;
+System.out.println("season.name()=" + season.name() + " season.toString()=" + season.toString() + 
+                                         " season.ordinal()=" + season.ordinal());
